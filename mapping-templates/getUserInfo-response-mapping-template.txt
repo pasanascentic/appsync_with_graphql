@@ -1,0 +1,2 @@
+#set($context.result.body = $util.parseJson($context.result.body))
+$util.toJson($context.result)

@@ -1,0 +1,109 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: aws-nodejs # NOTE: update this with your service name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  environment:
+    DYNAMODB_TABLE: Invoice_test
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:Scan
+        - dynamodb:Query
+        - dynamodb:UpdateItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
+# you can overwrite defaults here
+#  stage: dev
+#  region: us-east-1
+
+
+plugins:
+  - serverless-appsync-plugin
+
+
+custom:
+  accountId: # replace this with your accountId
+  appSync:
+    # name:  # defaults to api
+    # apiId # only required for update-appsync
+    authenticationType: AMAZON_COGNITO_USER_POOLS # API_KEY is also supported
+    userPoolConfig:
+      awsRegion: # required # region
+      defaultAction: ALLOW
+      userPoolId: # replace this with your Cognito User Pool Id
+    # region: # defaults to provider region
+    # mappingTemplatesLocation: # defaults to mapping-templates
+    mappingTemplates:
+      - dataSource: Lambda
+        type: Query
+        field: fetchMessage
+        request: "getUserInfo-request-mapping-template.txt"
+        response: "getUserInfo-response-mapping-template.txt"
+    schema: schema.graphql
+    serviceRole: "AppSyncServiceRoleOne"
+    dataSources:
+      - type: AWS_LAMBDA
+        name: Lambda
+        description: 'Lambda DataSource'
+        config:
+          lambdaFunctionArn: "arn:aws:lambda:us-east-1:${self:custom.accountId}:function:aws-nodejs-dev-graphql"
+          serviceRoleArn: "arn:aws:iam::${self:custom.accountId}:role/Lambda-${self:custom.appSync.serviceRole}"
+
+functions:
+  graphql:
+    handler: handler.hello
+  query:
+    handler: handler.query
+    events:
+      - http:
+          path: query
+          method: get
+
+resources:
+  Resources:
+    AppSyncServiceRoleOne:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: "Lambda-AppSyncServiceRoleOne"
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: "Allow"
+              Principal:
+                Service:
+                  - "appsync.amazonaws.com"
+              Action:
+                - "sts:AssumeRole"
+        Policies:
+          -
+            PolicyName: "Lambda-AppSyncServiceRole-Policy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                -
+                  Effect: "Allow"
+                  Action:
+                    - "lambda:invokeFunction"
+                  Resource:
+                    - "arn:aws:lambda:us-east-1:*:function:aws-nodejs-dev-graphql"
+                    - "arn:aws:lambda:us-east-1:*:function:aws-nodejs-dev-graphql:*"

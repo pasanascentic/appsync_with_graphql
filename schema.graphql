@@ -1,0 +1,16 @@
+type MessageText {
+	message: String
+}
+
+type Query {
+	fetchMessage: httpResponse
+}
+
+type httpResponse {
+	##statusCode: String
+	body: MessageText
+}
+
+schema {
+	query: Query
+}
